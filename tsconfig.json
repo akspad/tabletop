@@ -1,0 +1,1 @@
+{"extends":"expo/tsconfig.base","compilerOptions":{"strict":true,"types":["vitest/importMeta","vite/client"]},"exclude":["node_modules","dist","ios","android","test-results","playwright-report"]}

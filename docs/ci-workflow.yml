@@ -1,0 +1,23 @@
+name: Tabletop checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck && npm test
+      - run: npx expo export --platform all
+        env:
+          EXPO_PUBLIC_CONVEX_URL: https://formal-cat-696.convex.cloud
+          EXPO_PUBLIC_APP_URL: https://formal-cat-696.convex.site

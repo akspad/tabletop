@@ -1,0 +1,53 @@
+{
+  "backend": "https://formal-cat-696.convex.cloud",
+  "startedAt": "2026-11-15T22:38:56.133Z",
+  "clients": 3,
+  "checks": [
+    "Three independent guest identities join one live Convex table",
+    "Rejoining with a persisted session restores the same seat",
+    "Concurrent writes to separate crossword cells both survive",
+    "Retrying the same action ID does not apply it twice",
+    "A complete shared crossword reaches real results",
+    "Daily completion is saved for a participating guest",
+    "Returning to the lobby preserves all three seats",
+    "Hanabi query omits the viewer’s own faces and the deck",
+    "Hanabi completes from a normal shuffled deal through legal player actions",
+    "Live Hanabi includes a legal clue and a successful informed card play",
+    "Live Hanabi reaches the final round without an uninformed play or mistake",
+    "The host can rematch Hanabi without replacing the table",
+    "Property Rush query omits opponents’ hands and the deck",
+    "Property Rush completes from a normal 60-card shuffled deal",
+    "Live Property Rush includes a rent response and selected bank payment"
+  ],
+  "games": {
+    "crossword": {
+      "result": {
+        "score": 25,
+        "summary": "We solved Tabletop’s Daily Mini in 0:01."
+      },
+      "puzzleId": "mini-2026-11-15"
+    },
+    "hanabi": {
+      "result": {
+        "score": 2,
+        "summary": "Final round complete: 2 of 25 points."
+      },
+      "turns": 71,
+      "clues": 35,
+      "plays": 2
+    },
+    "property": {
+      "result": {
+        "summary": "Three complete sets! Property Rush has a winner.",
+        "winnerId": "jd72je777feh04y7yswty3909n8j8e2d"
+      },
+      "steps": 46,
+      "rentResponses": 3,
+      "payments": 2,
+      "blocks": 1,
+      "steals": 2
+    }
+  },
+  "completedAt": "2026-11-15T22:39:13.890Z",
+  "code": "PHJZVQ"
+}

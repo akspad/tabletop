@@ -1,0 +1,1 @@
+{"expo":{"name":"Tabletop","slug":"tabletop-room-fresh","version":"1.0.0","orientation":"portrait","userInterfaceStyle":"light","scheme":"tabletop","backgroundColor":"#f8f3e8","ios":{"supportsTablet":true,"bundleIdentifier":"com.tabletoproom.fresh"},"android":{"package":"com.tabletoproom.fresh"},"web":{"bundler":"metro"}}}
