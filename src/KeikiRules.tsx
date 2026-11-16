@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, Text, View } from 'react-native';
+import { Keyboard, Pressable, Text, View } from 'react-native';
 import { useAction } from 'convex/react';
 import { ConvexError } from 'convex/values';
 import { api, type GameType } from './api';
@@ -20,6 +20,7 @@ export default function KeikiRules({ secret, code, gameType, onBack }: {
   const [answer, setAnswer] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [retryAt, setRetryAt] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const sending = useRef(false);
@@ -57,7 +58,7 @@ export default function KeikiRules({ secret, code, gameType, onBack }: {
   return <View style={{ gap: 14 }}>
     <Label>OPTIONAL · POWERED BY KEIKI</Label>
     <Text style={[s.body, { color: colors.ink }]}>Ask a rule, keep the game moving.</Text>
-    <Text style={s.body}>Only the game name and your question go to Keiki, where questions are stored. Don’t include private cards or personal information.</Text>
+    <Text style={s.body}>Only your chosen game and question go to Keiki. Keiki stores questions. Don’t include private cards or personal info.</Text>
     {!answer && examples[gameType].map(example => <Button key={example} secondary title={example} disabled={busy} onPress={() => setQuestion(example)} />)}
     <Input accessibilityLabel="Rules question" placeholder="What would you like explained?" value={question} onChangeText={setQuestion} multiline blurOnSubmit returnKeyType="send" onSubmitEditing={() => void send()} maxLength={300} editable={!busy} style={{ minHeight: 88, textAlignVertical: 'top' }} />
     <Button title={seconds > 0 ? `Ask again in ${seconds}s` : 'Ask Keiki'} loading={busy} disabled={!question.trim() || seconds > 0} onPress={() => void send()} />
@@ -65,7 +66,21 @@ export default function KeikiRules({ secret, code, gameType, onBack }: {
     {busy && <Text accessibilityLiveRegion="polite" style={s.body}>Keiki is thinking… Your game is unchanged.</Text>}
     {error ? <Text accessibilityRole="alert" style={[s.body, { color: colors.red }]}>{error}</Text> : null}
     {answer ? <Card style={{ padding: 16, gap: 10 }}><Label>KEIKI’S EXPLANATION</Label><Text accessibilityLiveRegion="polite" selectable style={[s.body, { color: colors.ink }]}>{answer}</Text></Card> : null}
-    <Text style={s.body}>AI explanations can be wrong. The app’s rules apply. Up to 20 questions per guest each UTC day. No live table data is attached.</Text>
+    <Text style={s.body}>AI can be wrong. The app’s rules apply.</Text>
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Limits and details"
+        accessibilityState={{ expanded: detailsOpen }}
+        aria-expanded={detailsOpen}
+        onPress={() => setDetailsOpen(open => !open)}
+        style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
+      >
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.green }}>Limits and details</Text>
+        <Text style={{ color: colors.green }}>{detailsOpen ? '−' : '+'}</Text>
+      </Pressable>
+      {detailsOpen && <Text style={s.body}>Up to 20 questions per guest each UTC day, with 5 seconds between questions. No live table data is attached.</Text>}
+    </View>
     <Button secondary title="Back to rules" onPress={onBack} />
   </View>;
 }

@@ -487,24 +487,30 @@ export default function Shell({
               )}
             </View>
             {!!session.seat && (
-              <Card style={{ gap: 14 }}>
-                <Text
-                  style={{ fontSize: 18, fontWeight: "700", color: colors.ink }}
-                >
-                  Your seat is saved.
-                </Text>
-                <Text style={s.body}>
-                  Return to room {session.seat.code}, just where you left it.
-                </Text>
-                <Button
-                  secondary
-                  title={`Return to ${session.seat.code} →`}
-                  onPress={() => {
-                    setLocalHome(false);
-                    setError("");
-                  }}
-                />
-              </Card>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Resume game in room ${session.seat.code}`}
+                onPress={() => {
+                  setLocalHome(false);
+                  setError("");
+                }}
+                style={({ pressed }) => [{
+                  minHeight: 60,
+                  paddingHorizontal: 18,
+                  paddingVertical: 14,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: colors.line,
+                  backgroundColor: colors.white,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }, pressed && { opacity: 0.75 }]}
+              >
+                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.green }}>Resume game</Text>
+                <Text style={{ fontSize: 14, color: colors.muted }}>{session.seat.code} →</Text>
+              </Pressable>
             )}
             <View
               style={styles.sectionHeading}
