@@ -2,6 +2,16 @@
 
 All dates below are November 15, 2026. This record distinguishes a real Convex game, a rendered browser check, and a Revyl cloud-phone check from a physical-device check.
 
+## Opt-in Property Rush advisor follow-up
+
+This feature was completed after the event's 6 p.m. Pacific submission deadline; it is not a claim of pre-deadline completion.
+
+- TypeScript and all 140 unit/Convex tests passed. The 20 new advisor tests cover offered-action legality, hidden-information privacy, off-turn and other-game rejection, exact game/version binding, stale responses, malformed choices, and safe failures. All 28 browser E2Es then passed against the published HTTPS site and real Convex backend, including eight advisor cases.
+- Real Keiki structured-output calls returned usable offered choices and reasons. Requesting advice left the full table unchanged; Keep thinking also preserved it. Double-clicking Confirm move sent one mutation and advanced exactly one version. A live table change removed advice and its pending confirmation, and a held real response could not restore old advice. A waiting player received a friendly rejection without a game change. Hanabi, Daily Mini, and the Property lobby exposed no advisor.
+- The first full hosted run found an existing exact-copy regression after the shared request-limit label changed. The rules-only copy was restored without altering its test; the complete 28-case run above passed after republication. A separate new privacy fixture was corrected to exchange hidden cards without changing the public deck count; its unchanged equality assertion now verifies the intended boundary.
+- Capy iOS build `01M7H2N4D4XK8N4X85JA7BJJ36`, Revyl version `0517e75c-3b15-4215-969f-dfe4786c1654`, ran the advisor on an iPhone 16 cloud simulator with a separate hosted browser guest. The visible opt-in disclosure preceded a real suggestion to place an amber property. Keep thinking returned to the suggestion while the guest still showed 3 plays, no properties, and 7 host cards. Explicit confirmation then showed Move played; the guest independently updated to 2 plays, one amber property, and 6 host cards. Native opt-in and confirmation screenshots were captured. Browser tests, not this native pass, provide the in-flight staleness and double-click evidence.
+- The source and public web export were scanned against all three configured credential values without printing them. Keiki's server-only gateway remains without passthrough, external tools, memory, or messaging channels. Advice is legal-option constrained, not a guarantee of good strategy or accurate prose: one live rationale made an unsupported singleton claim, despite recommending a legal action. The UI explicitly warns that AI can be wrong.
+
 ## Mobile clarity and Keiki follow-up
 
 - Final TypeScript and all 120 unit/Convex tests passed. All 17 browser E2Es passed on both the local final source and the published HTTPS site with the real Convex backend and Keiki agent; the corrected selected-payment test also passed three additional shuffled deals. Final web, iOS, and Android JavaScript/Hermes exports passed.
@@ -56,4 +66,4 @@ These tutorials use imaginary local practice hands; they are not evidence of liv
 - GitHub Actions is not installed because the publication credential lacked workflow permission. `docs/ci-workflow.yml` is an optional recipe, not an active CI run.
 - Internet is required. There is no offline peer-to-peer mode, public matchmaking, seat eviction, friend graph, voice/video, or app-store distribution.
 - The three fixed puzzles are word-square minis, so Across and Down share an answer set. Additional prepared dates rotate this bank; new editorial puzzles are not generated live.
-- Keiki was added later as an optional rules-only API agent. Its setup, privacy boundary, limits, and verification are recorded in [Keiki integration](keiki.md). No messaging channels or contacts are connected. The initially supplied server-only key is organization-wide; an agent-bound replacement is recommended.
+- Keiki was added later as an optional rules API agent, followed by explicitly requested Property Rush-only move advice. Its setup, privacy boundary, limits, and verification are recorded in [Keiki integration](keiki.md). No messaging channels or contacts are connected. The initially supplied server-only key is organization-wide; an agent-bound replacement is recommended.

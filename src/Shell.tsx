@@ -1253,6 +1253,7 @@ export default function Shell({
                   secret={session.secret}
                   code={code}
                   gameType={rule}
+                  propertyContext={rule === "property" && table.phase === "playing" && table.gameType === "property" ? { gameId: table.gameId, version: table.version, players: table.players } : undefined}
                   onBack={() => setKeikiOpen(false)}
                 />
               ) : (

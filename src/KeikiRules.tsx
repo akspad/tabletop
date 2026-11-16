@@ -5,6 +5,7 @@ import { ConvexError } from 'convex/values';
 import { api, type GameType } from './api';
 import { cleanError } from './errors';
 import { Button, Card, Input, Label, colors, s } from './ui';
+import PropertyAdvisor, { type PropertyAdvisorContext } from './PropertyAdvisor';
 
 const examples: Record<GameType, string[]> = {
   crossword: ['How do I switch Across and Down?', 'Can we edit at the same time?'],
@@ -12,8 +13,9 @@ const examples: Record<GameType, string[]> = {
   property: ['Can I pay rent with my properties?', 'Do I get change if I pay 3 for rent of 2?'],
 };
 
-export default function KeikiRules({ secret, code, gameType, onBack }: {
+export default function KeikiRules({ secret, code, gameType, propertyContext, onBack }: {
   secret: string; code: string; gameType: GameType; onBack: () => void;
+  propertyContext?: PropertyAdvisorContext;
 }) {
   const ask = useAction(api.askRules);
   const [question, setQuestion] = useState('');
@@ -56,9 +58,10 @@ export default function KeikiRules({ secret, code, gameType, onBack }: {
     finally { sending.current = false; setBusy(false); }
   }
   return <View style={{ gap: 14 }}>
+    {gameType === 'property' && propertyContext && <PropertyAdvisor secret={secret} code={code} context={propertyContext} />}
     <Label>OPTIONAL · POWERED BY KEIKI</Label>
     <Text style={[s.body, { color: colors.ink }]}>Ask a rule, keep the game moving.</Text>
-    <Text style={s.body}>Only your chosen game and question go to Keiki. Keiki stores questions. Don’t include private cards or personal info.</Text>
+    <Text style={s.body}>{propertyContext ? 'For rules questions, only your chosen game and question go to Keiki. Keiki stores questions. Don’t include private cards or personal info.' : 'Only your chosen game and question go to Keiki. Keiki stores questions. Don’t include private cards or personal info.'}</Text>
     {!answer && examples[gameType].map(example => <Button key={example} secondary title={example} disabled={busy} onPress={() => setQuestion(example)} />)}
     <Input accessibilityLabel="Rules question" placeholder="What would you like explained?" value={question} onChangeText={setQuestion} multiline blurOnSubmit returnKeyType="send" onSubmitEditing={() => void send()} maxLength={300} editable={!busy} style={{ minHeight: 88, textAlignVertical: 'top' }} />
     <Button title={seconds > 0 ? `Ask again in ${seconds}s` : 'Ask Keiki'} loading={busy} disabled={!question.trim() || seconds > 0} onPress={() => void send()} />
@@ -79,7 +82,7 @@ export default function KeikiRules({ secret, code, gameType, onBack }: {
         <Text style={{ fontSize: 15, fontWeight: '700', color: colors.green }}>Limits and details</Text>
         <Text style={{ color: colors.green }}>{detailsOpen ? '−' : '+'}</Text>
       </Pressable>
-      {detailsOpen && <Text style={s.body}>Up to 20 questions per guest each UTC day, with 5 seconds between questions. No live table data is attached.</Text>}
+      {detailsOpen && <Text style={s.body}>{propertyContext ? 'Up to 20 requests per guest each UTC day, with 5 seconds between requests. Rules questions and move suggestions share this limit. No live table data is attached to rules questions.' : 'Up to 20 questions per guest each UTC day, with 5 seconds between questions. No live table data is attached.'}</Text>}
     </View>
     <Button secondary title="Back to rules" onPress={onBack} />
   </View>;
