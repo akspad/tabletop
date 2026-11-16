@@ -155,6 +155,9 @@ for (const title of ["The Daily Mini", "Hanabi", "Property Rush"]) {
     await expect(
       page.getByRole("button", { name: `Read ${title} rules`, exact: true }),
     ).toHaveCount(1);
+    if (title === "Hanabi") {
+      await expect(page.getByRole("button", { name: "Choose Hanabi", exact: true }).locator("svg")).toHaveCount(1);
+    }
     await page
       .getByRole("button", { name: `Choose ${title}`, exact: true })
       .click();
@@ -176,6 +179,9 @@ for (const title of ["The Daily Mini", "Hanabi", "Property Rush"]) {
     await expect(
       page.getByRole("radio", { name: new RegExp(title) }),
     ).toBeChecked();
+    if (title === "Hanabi") {
+      await expect(page.getByRole("radio", { name: /Hanabi/ }).locator("svg")).toHaveCount(1);
+    }
     const play = page.getByRole("button", {
       name: `Play ${title} →`,
       exact: true,

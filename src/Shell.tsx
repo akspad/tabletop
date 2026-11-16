@@ -30,13 +30,14 @@ import PropertyView from "./games/PropertyView";
 import GameTutorial from "./GameTutorial";
 import KeikiRules from "./KeikiRules";
 import { cleanError } from "./errors";
+import FireworkIcon from "./FireworkIcon";
 
 const games: {
   id: GameType;
   title: string;
   tag: string;
   description: string;
-  symbol: string;
+  symbol?: string;
   color: string;
   min: number;
   max: number;
@@ -58,7 +59,6 @@ const games: {
     tag: "COOPERATIVE · 2–5 PLAYERS",
     description:
       "You see their cards. They see yours. Make something brilliant, together.",
-    symbol: "✳",
     color: "#f2c5aa",
     min: 2,
     max: 5,
@@ -481,7 +481,7 @@ export default function Shell({
                     <Text style={styles.artLetter}>t</Text>
                   </View>
                   <View style={styles.spark}>
-                    <Text style={{ fontSize: 25, color: colors.lime }}>✳</Text>
+                    <FireworkIcon size={25} color={colors.lime} />
                   </View>
                 </View>
               )}
@@ -698,7 +698,7 @@ export default function Shell({
                   <View
                     style={[styles.gameSymbol, { backgroundColor: game.color }]}
                   >
-                    <Text style={styles.symbolText}>{game.symbol}</Text>
+                    {game.id === "hanabi" ? <FireworkIcon /> : <Text style={styles.symbolText}>{game.symbol}</Text>}
                   </View>
                   <View style={{ flex: 1, gap: 6 }}>
                     <Text style={styles.gameTag}>{game.tag}</Text>
@@ -916,9 +916,7 @@ export default function Shell({
                             },
                           ]}
                         >
-                          <Text style={[styles.symbolText, { fontSize: 30 }]}>
-                            {game.symbol}
-                          </Text>
+                          {game.id === "hanabi" ? <FireworkIcon size={30} /> : <Text style={[styles.symbolText, { fontSize: 30 }]}>{game.symbol}</Text>}
                         </View>
                         <View style={{ flex: 1, gap: 5 }}>
                           <Text style={styles.gameTitle}>{game.title}</Text>
@@ -1022,7 +1020,7 @@ export default function Shell({
                 style={{ gap: 22, alignItems: "center", paddingVertical: 35 }}
               >
                 <View style={styles.resultBadge}>
-                  <Text style={{ fontSize: 45, color: colors.green }}>✳</Text>
+                  <FireworkIcon size={45} />
                 </View>
                 <Label>BETTER TOGETHER</Label>
                 <Text
