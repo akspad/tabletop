@@ -34,7 +34,11 @@ The browser site is hosted by Convex HTTP actions and storage, so it does not de
 
 **Property Rush, 2–4 players.** The original simplified 60-card rules: three distinct-color sets of two, banks, rent, protected complete sets, steals, blocks, mandatory responses, selected payments, and discarding to seven. Hands remain private. No wildcards, buildings, trading, or action chains.
 
-Both card games include optional tap-through tutorials with clearly labeled practice examples. Practice does not read live hands or change a table.
+Both card games include optional tap-through tutorials with clearly labeled practice examples. Practice does not read live hands or change a table. Word Relay and Draw Together are explicitly non-playable Coming soon previews, not additional implemented games.
+
+Home game tiles prepare a table with that game selected; the creation form names the selection prominently. All games use this same entry flow, without a separate daily shortcut button. Hosts have a persistent lobby Play action. Guests see a waiting message instead of controls they cannot use.
+
+**Optional Keiki rules helper.** During a game, tap the chat bubble just left of the question mark. Hosts can also open it from the selected game's lobby rules. Only the chosen game name and the question you explicitly submit are sent to the grounded Keiki agent. It has no game-state tools, contacts, messaging channels, or payment capabilities. Keiki stores questions and answers; don't include private cards or personal information. AI explanations can be wrong, and Convex still enforces the game rules. There is no live move advisor or auto-play. See [Keiki setup and privacy](docs/keiki.md).
 
 The host can rematch or choose another game while retaining the table and players. New seats are locked during play; existing seats can reconnect. A room code locates a table but cannot impersonate a seat.
 
@@ -57,6 +61,6 @@ Convex environment: **development**, team `akshay-p-b898b`, project `tabletop`, 
 
 Application code in this repository was written from scratch on November 15, 2026, after work began at approximately 2:22 p.m. Pacific. Only the fresh Expo application was published here; no code or commit history from the older private Tabletop implementation is included. Types, rules, and all-platform Expo exports were checked locally. An optional [CI recipe](docs/ci-workflow.yml) is included; copying it to `.github/workflows/ci.yml` requires a GitHub credential with workflow permission, which the publication token did not have.
 
-Capy coordinated implementation, review, and verification. Revyl built and ran the actual iOS app. Convex supplies the authoritative realtime backend and persistent HTTPS guest hosting. Keiki is not included because no connected agent/channel was available; no messages or contacts were accessed. Payments are not included.
+Capy coordinated implementation, review, and verification. Revyl built and ran the actual iOS app. Convex supplies the authoritative realtime backend and persistent HTTPS guest hosting. Keiki powers the optional, explicitly requested rules explanations through a server-only API integration. No contacts or messaging channels are connected, and payments are not included.
 
 [The published event rules](https://events.ycombinator.com/ConsumerMobileHack) require fresh code after 10 a.m., Capy/Revyl/Convex, and a device demo, with submissions due at **6 p.m. Pacific on November 15**. This repository prepares the submission; it does not submit the event form.

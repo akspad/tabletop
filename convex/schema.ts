@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
 export default defineSchema({
+  helperBudgets: defineTable({ key: v.string(), day: v.number(), count: v.number(), lastAt: v.number() }).index('by_key', ['key']),
   webAssets: defineTable({ path: v.string(), storageId: v.id('_storage'), contentType: v.string(), immutable: v.boolean() }).index('by_path', ['path']),
   guests: defineTable({ secretHash: v.string(), createdAt: v.number() }).index('by_secret', ['secretHash']),
   tables: defineTable({

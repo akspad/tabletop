@@ -38,7 +38,7 @@ async function tableByCode(ctx: any, code: string) {
   return table;
 }
 
-async function member(ctx: any, args: {secret: string; code: string}) {
+export async function member(ctx: any, args: {secret: string; code: string}) {
   const user = await guest(ctx, args.secret);
   const table = await tableByCode(ctx, args.code);
   if (!table.players.some((p: any) => p.id === user._id)) throw new Error('Join this table before opening it.');

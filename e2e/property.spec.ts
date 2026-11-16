@@ -81,7 +81,7 @@ test("live rent response and payment scroll into view from a private hand", asyn
       if (
         hasProperty &&
         me.hand.some((card: any) => card.kind === "rent") &&
-        rival.bank.reduce((sum: number, card: any) => sum + card.value, 0) >= 2
+        rival.bank.reduce((sum: number, card: any) => sum + card.value, 0) > 2
       ) {
         actor = current;
         break;

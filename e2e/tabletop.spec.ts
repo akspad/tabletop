@@ -7,7 +7,7 @@ test("daily shortcut opens the existing create flow and requires a name", async 
   await page.goto("/");
   await expect(page.getByText(/PACIFIC TIME/).first()).toBeVisible();
   await page
-    .getByRole("button", { name: "Start today’s mini", exact: true })
+    .getByRole("button", { name: "Choose The Daily Mini", exact: true })
     .click();
   await expect(page.getByRole("textbox", { name: "Your name" })).toBeVisible();
   await page.getByRole("button", { name: "Create my table →" }).click();

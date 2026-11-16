@@ -95,6 +95,8 @@ async function main() {
     EXPO_PUBLIC_APP_URL: site,
   };
   delete exportEnv.CONVEX_DEPLOY_KEY;
+  delete exportEnv.KEIKI_API_KEY;
+  delete exportEnv.GH_TOKEN;
   execFileSync(process.execPath, [join(root, 'node_modules/expo/bin/cli'), 'export', '--platform', 'web'], {
     cwd: root, env: exportEnv, stdio: 'inherit',
   });

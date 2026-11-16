@@ -1,5 +1,6 @@
 import { makeFunctionReference } from "convex/server";
 export const api = {
+  askRules: makeFunctionReference<"action">("keiki:ask"),
   create: makeFunctionReference<"mutation">("tables:create"),
   join: makeFunctionReference<"mutation">("tables:join"),
   get: makeFunctionReference<"query">("tables:get"),

@@ -1,0 +1,71 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Keyboard, Text, View } from 'react-native';
+import { useAction } from 'convex/react';
+import { ConvexError } from 'convex/values';
+import { api, type GameType } from './api';
+import { cleanError } from './errors';
+import { Button, Card, Input, Label, colors, s } from './ui';
+
+const examples: Record<GameType, string[]> = {
+  crossword: ['How do I switch Across and Down?', 'Can we edit at the same time?'],
+  hanabi: ['Does a clue mark every matching card?', 'Who gets a final turn when the deck runs out?'],
+  property: ['Can I pay rent with my properties?', 'Do I get change if I pay 3 for rent of 2?'],
+};
+
+export default function KeikiRules({ secret, code, gameType, onBack }: {
+  secret: string; code: string; gameType: GameType; onBack: () => void;
+}) {
+  const ask = useAction(api.askRules);
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [retryAt, setRetryAt] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const sending = useRef(false);
+  const seconds = Math.max(0, Math.ceil((retryAt - now) / 1_000));
+  useEffect(() => {
+    if (!retryAt) return;
+    const timer = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= retryAt) setRetryAt(0);
+    }, 250);
+    return () => clearInterval(timer);
+  }, [retryAt]);
+  async function send() {
+    if (sending.current || seconds > 0 || !question.trim()) return;
+    sending.current = true;
+    Keyboard.dismiss();
+    setBusy(true);
+    setError('');
+    setAnswer('');
+    const started = Date.now();
+    setNow(started);
+    setRetryAt(started + 5_000);
+    try { setAnswer(await ask({ secret, code, gameType, question: question.trim() })); }
+    catch (failure) {
+      const data = failure instanceof ConvexError ? failure.data : null;
+      if (data && typeof data === 'object' && 'code' in data && data.code === 'COOLDOWN' && 'retryAfterMs' in data && typeof data.retryAfterMs === 'number') {
+        const current = Date.now();
+        setNow(current);
+        setRetryAt(current + Math.min(5_000, Math.max(0, data.retryAfterMs)));
+      } else setError(cleanError(failure));
+    }
+    finally { sending.current = false; setBusy(false); }
+  }
+  return <View style={{ gap: 14 }}>
+    <Label>OPTIONAL · POWERED BY KEIKI</Label>
+    <Text style={[s.body, { color: colors.ink }]}>Ask a rule, keep the game moving.</Text>
+    <Text style={s.body}>Only the game name and your question go to Keiki, where questions are stored. Don’t include private cards or personal information.</Text>
+    {!answer && examples[gameType].map(example => <Button key={example} secondary title={example} disabled={busy} onPress={() => setQuestion(example)} />)}
+    <Input accessibilityLabel="Rules question" placeholder="What would you like explained?" value={question} onChangeText={setQuestion} multiline blurOnSubmit returnKeyType="send" onSubmitEditing={() => void send()} maxLength={300} editable={!busy} style={{ minHeight: 88, textAlignVertical: 'top' }} />
+    <Button title={seconds > 0 ? `Ask again in ${seconds}s` : 'Ask Keiki'} loading={busy} disabled={!question.trim() || seconds > 0} onPress={() => void send()} />
+    {!busy && seconds > 0 && <Text accessibilityLiveRegion="polite" style={s.body}>Give Keiki a moment before your next question.</Text>}
+    {busy && <Text accessibilityLiveRegion="polite" style={s.body}>Keiki is thinking… Your game is unchanged.</Text>}
+    {error ? <Text accessibilityRole="alert" style={[s.body, { color: colors.red }]}>{error}</Text> : null}
+    {answer ? <Card style={{ padding: 16, gap: 10 }}><Label>KEIKI’S EXPLANATION</Label><Text accessibilityLiveRegion="polite" selectable style={[s.body, { color: colors.ink }]}>{answer}</Text></Card> : null}
+    <Text style={s.body}>AI explanations can be wrong. The app’s rules apply. Up to 20 questions per guest each UTC day. No live table data is attached.</Text>
+    <Button secondary title="Back to rules" onPress={onBack} />
+  </View>;
+}

@@ -10,6 +10,7 @@
 
 import type * as hosting from "../hosting.js";
 import type * as http from "../http.js";
+import type * as keiki from "../keiki.js";
 import type * as tables from "../tables.js";
 
 import type {
@@ -21,6 +22,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   hosting: typeof hosting;
   http: typeof http;
+  keiki: typeof keiki;
   tables: typeof tables;
 }>;
 

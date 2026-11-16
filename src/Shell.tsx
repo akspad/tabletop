@@ -10,6 +10,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,6 +19,7 @@ import * as Crypto from "expo-crypto";
 import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
 import QRCode from "react-native-qrcode-svg";
+import Svg, { Path } from "react-native-svg";
 import { api, type GameType, type Table } from "./api";
 import { saveSession, type Session } from "./session";
 import { Avatar, Button, Card, Input, Label, colors, s, serif } from "./ui";
@@ -26,6 +28,8 @@ import HanabiView from "./games/HanabiView";
 import HanabiCelebration from "./games/HanabiCelebration";
 import PropertyView from "./games/PropertyView";
 import GameTutorial from "./GameTutorial";
+import KeikiRules from "./KeikiRules";
+import { cleanError } from "./errors";
 
 const games: {
   id: GameType;
@@ -99,18 +103,6 @@ const rules: Record<GameType, { intro: string; steps: string[] }> = {
     ],
   },
 };
-function cleanError(error: unknown) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Something went wrong. Please try again.";
-  return message
-    .replace(/\[CONVEX[^\]]*\]\s*/g, "")
-    .replace(/\[Request ID:[^\]]*\]\s*/g, "")
-    .replace(/Server Error\s*/g, "")
-    .split("\n")[0]
-    .slice(0, 240);
-}
 function codeFromUrl(url: string | null) {
   if (!url) return "";
   try {
@@ -140,10 +132,14 @@ export default function Shell({
   const [selected, setSelected] = useState<GameType>("crossword");
   const [puzzleChoice, setPuzzleChoice] = useState("");
   const [rule, setRule] = useState<GameType | null>(null);
+  const [keikiOpen, setKeikiOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [tutorial, setTutorial] = useState<"hanabi" | "property" | null>(null);
   const pendingTutorial = useRef<"hanabi" | "property" | null>(null);
-  useEffect(() => setConfirmEnd(false), [rule]);
+  useEffect(() => {
+    setConfirmEnd(false);
+    if (!rule) setKeikiOpen(false);
+  }, [rule]);
   const [copied, setCopied] = useState(false);
   const [refreshDay, setRefreshDay] = useState(() =>
     new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles" }),
@@ -187,6 +183,8 @@ export default function Shell({
     return () => clearInterval(timer);
   }, []);
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const entryTop = useRef(0);
+  const pendingEntryScroll = useRef(false);
   const gameTop = useRef(0);
   const propertyFlow =
     table?.gameType === "property"
@@ -323,9 +321,60 @@ export default function Shell({
     setTutorial(gameType);
   }
   const home = localHome || !code;
+  const compact = useWindowDimensions().width < 600;
+  const playing = !home && table?.phase === "playing";
+  function chooseGame(gameType: GameType) {
+    if (gameType === "crossword") setPuzzleChoice(daily?.puzzleId ?? "");
+    if (homeMode === "create" && selected === gameType) {
+      scroll.current?.scrollTo({ y: entryTop.current, animated: false });
+    } else {
+      pendingEntryScroll.current = true;
+    }
+    setSelected(gameType);
+    setHomeMode("create");
+    setError("");
+  }
+  function openRules(gameType: GameType, chat = false) {
+    setConfirmEnd(false);
+    setKeikiOpen(chat);
+    setRule(gameType);
+  }
+  const ruleActions = table?.gameType && table.phase !== "lobby" && (
+    <View style={[s.row, { gap: 8 }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Message Keiki"
+        onPress={() => openRules(table.gameType!, true)}
+        style={styles.rulesButton}
+      >
+        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+          <Path
+            d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-6 4V6a2 2 0 0 1 2-2Z"
+            stroke={colors.green}
+            strokeWidth={1.7}
+            strokeLinejoin="round"
+          />
+          <Path
+            d="M7 9h10M7 13h7"
+            stroke={colors.green}
+            strokeWidth={1.7}
+            strokeLinecap="round"
+          />
+        </Svg>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Game rules"
+        onPress={() => openRules(table.gameType!)}
+        style={styles.rulesButton}
+      >
+        <Text style={{ color: colors.green, fontWeight: "700" }}>?</Text>
+      </Pressable>
+    </View>
+  );
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-      <View style={styles.header}>
+      <View style={[styles.header, compact && styles.compactHeader]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Tabletop home"
@@ -353,7 +402,11 @@ export default function Shell({
         ref={scroll}
         automaticallyAdjustKeyboardInsets
         keyboardDismissMode="interactive"
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[
+          styles.scroll,
+          compact && styles.compactScroll,
+          compact && playing && styles.playingScroll,
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -381,7 +434,7 @@ export default function Shell({
         ) : null}
         {home ? (
           <>
-            <View style={styles.hero}>
+            <View style={[styles.hero, compact && styles.compactHero]}>
               <View style={styles.heroLabel}>
                 <View
                   style={[styles.liveDot, { backgroundColor: colors.lime }]}
@@ -390,41 +443,48 @@ export default function Shell({
                   A LITTLE LESS SCROLL. A LITTLE MORE PLAY.
                 </Text>
               </View>
-              <Text style={styles.heroTitle}>
-                Your people.
-                {"\n"}
-                Your table.
+              <Text
+                style={[styles.heroTitle, compact && styles.compactHeroTitle]}
+              >
+                {compact ? "Your table." : "Your people.\nYour table."}
               </Text>
-              <Text style={styles.heroBody}>Gather around something good.</Text>
-              <View style={styles.heroArt}>
-                <View
-                  style={[
-                    styles.miniTile,
-                    {
-                      transform: [{ rotate: "-13deg" }],
-                      backgroundColor: colors.lime,
-                    },
-                  ]}
-                >
-                  <Text style={styles.artLetter}>t</Text>
+              <Text
+                style={[styles.heroBody, compact && styles.compactHeroBody]}
+              >
+                Play puzzles and card games with friends. Start a table, share
+                the code, and play together.
+              </Text>
+              {!compact && (
+                <View style={styles.heroArt}>
+                  <View
+                    style={[
+                      styles.miniTile,
+                      {
+                        transform: [{ rotate: "-13deg" }],
+                        backgroundColor: colors.lime,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.artLetter}>t</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.miniTile,
+                      {
+                        transform: [{ rotate: "11deg" }],
+                        marginLeft: -15,
+                        marginTop: 28,
+                        backgroundColor: colors.peach,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.artLetter}>t</Text>
+                  </View>
+                  <View style={styles.spark}>
+                    <Text style={{ fontSize: 25, color: colors.lime }}>✳</Text>
+                  </View>
                 </View>
-                <View
-                  style={[
-                    styles.miniTile,
-                    {
-                      transform: [{ rotate: "11deg" }],
-                      marginLeft: -15,
-                      marginTop: 28,
-                      backgroundColor: colors.peach,
-                    },
-                  ]}
-                >
-                  <Text style={styles.artLetter}>t</Text>
-                </View>
-                <View style={styles.spark}>
-                  <Text style={{ fontSize: 25, color: colors.lime }}>✳</Text>
-                </View>
-              </View>
+              )}
             </View>
             {!!session.seat && (
               <Card style={{ gap: 14 }}>
@@ -446,7 +506,12 @@ export default function Shell({
                 />
               </Card>
             )}
-            <View style={styles.sectionHeading}>
+            <View
+              style={styles.sectionHeading}
+              onLayout={(event) => {
+                entryTop.current = event.nativeEvent.layout.y;
+              }}
+            >
               <Text style={styles.sectionTitle}>Pull up a chair</Text>
               <Text style={styles.smallCaption}>NO ACCOUNT NEEDED</Text>
             </View>
@@ -458,14 +523,34 @@ export default function Shell({
                     setHomeMode("create");
                     setError("");
                   }}
-                  style={[styles.entryCard, { backgroundColor: "#e7edda" }]}
+                  style={[
+                    styles.entryCard,
+                    compact && styles.compactEntryCard,
+                    { backgroundColor: "#e7edda" },
+                  ]}
                 >
-                  <Text style={styles.entryIcon}>＋</Text>
-                  <Text style={styles.entryTitle}>Start a table</Text>
-                  <Text style={styles.entryBody}>
-                    Host a game. Invite your people.
+                  <Text
+                    style={[
+                      styles.entryIcon,
+                      compact && styles.compactEntryIcon,
+                    ]}
+                  >
+                    ＋
                   </Text>
-                  <Text style={styles.entryArrow}>Make room ↗</Text>
+                  <Text style={styles.entryTitle}>Start a table</Text>
+                  {!compact && (
+                    <Text style={styles.entryBody}>
+                      Host a game. Invite your people.
+                    </Text>
+                  )}
+                  <Text
+                    style={[
+                      styles.entryArrow,
+                      compact && styles.compactEntryArrow,
+                    ]}
+                  >
+                    Make room ↗
+                  </Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -473,18 +558,47 @@ export default function Shell({
                     setHomeMode("join");
                     setError("");
                   }}
-                  style={styles.entryCard}
+                  style={[styles.entryCard, compact && styles.compactEntryCard]}
                 >
-                  <Text style={styles.entryIcon}>↗</Text>
-                  <Text style={styles.entryTitle}>Join your friends</Text>
-                  <Text style={styles.entryBody}>
-                    Have a code? There’s a seat for you.
+                  <Text
+                    style={[
+                      styles.entryIcon,
+                      compact && styles.compactEntryIcon,
+                    ]}
+                  >
+                    ↗
                   </Text>
-                  <Text style={styles.entryArrow}>Take a seat ↗</Text>
+                  <Text style={styles.entryTitle}>Join your friends</Text>
+                  {!compact && (
+                    <Text style={styles.entryBody}>
+                      Have a code? There’s a seat for you.
+                    </Text>
+                  )}
+                  <Text
+                    style={[
+                      styles.entryArrow,
+                      compact && styles.compactEntryArrow,
+                    ]}
+                  >
+                    Take a seat ↗
+                  </Text>
                 </Pressable>
               </View>
             ) : (
-              <Card style={{ gap: 15 }}>
+              <Card
+                key={`${homeMode}:${homeMode === "create" ? selected : ""}`}
+                testID="entry-form"
+                style={{ gap: 15 }}
+                onLayout={() => {
+                  if (homeMode === "create" && pendingEntryScroll.current) {
+                    pendingEntryScroll.current = false;
+                    scroll.current?.scrollTo({
+                      y: entryTop.current,
+                      animated: false,
+                    });
+                  }
+                }}
+              >
                 <View style={[s.row, { justifyContent: "space-between" }]}>
                   <Text style={[styles.sectionTitle, { fontSize: 25 }]}>
                     {homeMode === "create"
@@ -503,9 +617,29 @@ export default function Shell({
                     <Text style={{ fontSize: 23, color: colors.muted }}>×</Text>
                   </Pressable>
                 </View>
+                {homeMode === "create" && (
+                  <View testID="selected-game" style={{ gap: 4 }}>
+                    <Text
+                      style={[
+                        styles.gameTag,
+                        { color: colors.green, fontSize: 10 },
+                      ]}
+                    >
+                      YOUR SELECTED GAME
+                    </Text>
+                    <Text
+                      style={[
+                        styles.gameTitle,
+                        { color: colors.green, fontSize: 27 },
+                      ]}
+                    >
+                      {selectedGame.title}
+                    </Text>
+                  </View>
+                )}
                 <Text style={s.body}>
                   {homeMode === "create"
-                    ? "Choose your name. We’ll save you a seat."
+                    ? `Choose your name. ${selectedGame.title} will be selected at your table.`
                     : "Enter your name and the room’s six-character code."}
                 </Text>
                 <Input
@@ -557,8 +691,8 @@ export default function Shell({
               <View key={game.id}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Read ${game.title} rules`}
-                  onPress={() => setRule(game.id)}
+                  accessibilityLabel={`Choose ${game.title}`}
+                  onPress={() => chooseGame(game.id)}
                   style={styles.gameRow}
                 >
                   <View
@@ -572,36 +706,54 @@ export default function Shell({
                     <Text style={styles.gameDescription}>
                       {game.description}
                     </Text>
-                    {game.id === "crossword" && daily && (
-                      <Text style={styles.daily}>
-                        {daily.completed
+                    {game.id === "crossword" && (
+                      <Text style={[styles.daily, { minHeight: 24 }]}>
+                        {daily?.completed
                           ? "✓ You’ve completed today’s mini"
-                          : `TODAY’S PUZZLE · ${daily.date} · PACIFIC TIME`}
+                          : daily
+                            ? `TODAY’S PUZZLE · ${daily.date} · PACIFIC TIME`
+                            : "A FRESH MINI EVERY DAY · PACIFIC TIME"}
                       </Text>
                     )}
                   </View>
                   <Text style={{ color: colors.green, fontSize: 20 }}>↗</Text>
                 </Pressable>
-                {game.id === "crossword" && daily && (
-                  <View style={{ paddingTop: 14 }}>
-                    <Text style={[styles.daily, { marginBottom: 12 }]}>
-                      {daily.completed
-                        ? `${daily.date} · PACIFIC TIME`
-                        : "A fresh mini, every day in Los Angeles."}
-                    </Text>
-                    <Button
-                      secondary
-                      title="Start today’s mini"
-                      onPress={() => {
-                        setSelected("crossword");
-                        setPuzzleChoice(daily.puzzleId);
-                        setHomeMode("create");
-                        setError("");
-                        scroll.current?.scrollTo({ y: 330, animated: true });
-                      }}
-                    />
-                  </View>
-                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Read ${game.title} rules`}
+                  onPress={() => openRules(game.id)}
+                  style={styles.homeRules}
+                >
+                  <Text
+                    style={{
+                      color: colors.green,
+                      fontSize: 13,
+                      fontWeight: "700",
+                    }}
+                  >
+                    Rules{game.id !== "crossword" ? " & learn to play" : ""} →
+                  </Text>
+                </Pressable>
+              </View>
+            ))}
+            {[
+              { title: "Word Relay", symbol: "↔", color: "#dce7ba" },
+              { title: "Draw Together", symbol: "✎", color: "#f2c5aa" },
+            ].map((game) => (
+              <View
+                key={game.title}
+                testID={`coming-soon-${game.title.toLowerCase().replace(/ /g, "-")}`}
+                style={styles.gameRow}
+              >
+                <View
+                  style={[styles.gameSymbol, { backgroundColor: game.color }]}
+                >
+                  <Text style={styles.symbolText}>{game.symbol}</Text>
+                </View>
+                <View style={{ flex: 1, gap: 6 }}>
+                  <Text style={styles.gameTag}>COMING SOON</Text>
+                  <Text style={styles.gameTitle}>{game.title}</Text>
+                </View>
               </View>
             ))}
             <Text style={styles.footer}>
@@ -631,51 +783,68 @@ export default function Shell({
           </View>
         ) : (
           <>
-            <View style={[s.row, { justifyContent: "space-between" }]}>
-              <View>
-                <Label>
-                  {table.phase === "lobby"
-                    ? "THE GATHERING PLACE"
-                    : table.phase === "finished"
-                      ? "THAT WAS A GOOD ONE"
-                      : (activeGame?.tag ?? "YOUR TABLE")}
-                </Label>
-                <Text style={[s.title, { fontSize: 34 }]}>
-                  {table.phase === "lobby"
-                    ? "Everyone’s welcome."
-                    : table.phase === "finished"
-                      ? "A moment to celebrate."
-                      : activeGame?.title}
-                </Text>
-              </View>
-              {table.gameType && table.phase !== "lobby" && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Game rules"
-                  onPress={() => setRule(table.gameType!)}
-                  style={styles.rulesButton}
-                >
-                  <Text style={{ color: colors.green, fontWeight: "700" }}>
-                    ?
+            {!(compact && playing && table.gameType === "crossword") && (
+              <View style={[s.row, { justifyContent: "space-between" }]}>
+                <View style={{ flex: 1 }}>
+                  {!(compact && playing) && (
+                    <Label>
+                      {table.phase === "lobby"
+                        ? "THE GATHERING PLACE"
+                        : table.phase === "finished"
+                          ? "THAT WAS A GOOD ONE"
+                          : (activeGame?.tag ?? "YOUR TABLE")}
+                    </Label>
+                  )}
+                  <Text
+                    style={[
+                      s.title,
+                      { fontSize: 34 },
+                      compact && playing && styles.playingTitle,
+                    ]}
+                  >
+                    {table.phase === "lobby"
+                      ? "Everyone’s welcome."
+                      : table.phase === "finished"
+                        ? "A moment to celebrate."
+                        : activeGame?.title}
                   </Text>
-                </Pressable>
-              )}
-            </View>
-            <View style={styles.players}>
+                </View>
+                {ruleActions}
+              </View>
+            )}
+            <View
+              style={[
+                styles.players,
+                compact && playing && { gap: 5, alignItems: "center" },
+              ]}
+            >
               {table.players.map((player) => (
-                <View key={player.id} style={styles.playerPill}>
-                  <Avatar name={player.name} color={player.color} size={27} />
+                <View
+                  key={player.id}
+                  style={[
+                    styles.playerPill,
+                    compact && playing && styles.compactPlayer,
+                  ]}
+                >
+                  <Avatar
+                    name={player.name}
+                    color={player.color}
+                    size={compact && playing ? 20 : 27}
+                  />
                   <Text style={styles.playerName}>
                     {player.name}
                     {player.id === session.seat?.playerId ? " (you)" : ""}
                   </Text>
-                  {player.id === table.hostId && (
+                  {player.id === table.hostId && !playing && (
                     <Text style={{ fontSize: 10, color: colors.muted }}>
                       HOST
                     </Text>
                   )}
                 </View>
               ))}
+              {compact && playing && table.gameType === "crossword" && (
+                <View style={{ marginLeft: "auto" }}>{ruleActions}</View>
+              )}
             </View>
             {table.phase === "lobby" ? (
               <>
@@ -716,149 +885,129 @@ export default function Shell({
                     </View>
                   </View>
                 </Card>
-                <View style={styles.sectionHeading}>
-                  <Text style={styles.sectionTitle}>What are we playing?</Text>
-                </View>
-                {games.map((game) => (
-                  <Pressable
-                    key={game.id}
-                    accessibilityRole="radio"
-                    accessibilityState={{
-                      selected: selected === game.id,
-                      disabled: !isHost,
-                    }}
-                    disabled={!isHost}
-                    onPress={() => setSelected(game.id)}
-                    style={[
-                      styles.selectGame,
-                      selected === game.id && styles.selectGameActive,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.gameSymbol,
-                        { backgroundColor: game.color, width: 56, height: 62 },
-                      ]}
-                    >
-                      <Text style={[styles.symbolText, { fontSize: 30 }]}>
-                        {game.symbol}
+                {isHost ? (
+                  <>
+                    <View style={styles.sectionHeading}>
+                      <Text style={styles.sectionTitle}>
+                        What are we playing?
                       </Text>
                     </View>
-                    <View style={{ flex: 1, gap: 5 }}>
-                      <Text style={styles.gameTitle}>{game.title}</Text>
-                      <Text style={styles.gameTag}>{game.tag}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.radio,
-                        selected === game.id && {
-                          backgroundColor: colors.green,
-                          borderColor: colors.green,
-                        },
-                      ]}
-                    >
-                      {selected === game.id && (
-                        <Text style={{ color: colors.white, fontSize: 12 }}>
-                          ✓
-                        </Text>
-                      )}
-                    </View>
-                  </Pressable>
-                ))}
-                {isHost && selected !== "crossword" && (
-                  <Button
-                    secondary
-                    title={`Learn ${selectedGame.title}`}
-                    onPress={() => learn(selected)}
-                  />
-                )}
-                {!isHost && (
-                  <View style={s.row}>
-                    <View style={{ flex: 1 }}>
+                    {games.map((game) => (
+                      <Pressable
+                        key={game.id}
+                        accessibilityRole="radio"
+                        aria-checked={selected === game.id}
+                        accessibilityState={{
+                          selected: selected === game.id,
+                        }}
+                        onPress={() => setSelected(game.id)}
+                        style={[
+                          styles.selectGame,
+                          selected === game.id && styles.selectGameActive,
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.gameSymbol,
+                            {
+                              backgroundColor: game.color,
+                              width: 56,
+                              height: 62,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.symbolText, { fontSize: 30 }]}>
+                            {game.symbol}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1, gap: 5 }}>
+                          <Text style={styles.gameTitle}>{game.title}</Text>
+                          <Text style={styles.gameTag}>{game.tag}</Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.radio,
+                            selected === game.id && {
+                              backgroundColor: colors.green,
+                              borderColor: colors.green,
+                            },
+                          ]}
+                        >
+                          {selected === game.id && (
+                            <Text style={{ color: colors.white, fontSize: 12 }}>
+                              ✓
+                            </Text>
+                          )}
+                        </View>
+                      </Pressable>
+                    ))}
+                    <Button
+                      secondary
+                      title={`Read ${selectedGame.title} rules`}
+                      onPress={() => openRules(selected)}
+                    />
+                    {selected !== "crossword" && (
                       <Button
                         secondary
-                        title="Learn Hanabi"
-                        onPress={() => learn("hanabi")}
+                        title={`Learn ${selectedGame.title}`}
+                        onPress={() => learn(selected)}
                       />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Button
-                        secondary
-                        title="Learn Property Rush"
-                        onPress={() => learn("property")}
-                      />
-                    </View>
-                  </View>
-                )}
-                {isHost ? (
-                  <View style={{ gap: 13 }}>
-                    {selected === "crossword" && daily && (
-                      <Card style={{ gap: 12 }}>
-                        <Label>CHOOSE YOUR MINI</Label>
-                        {daily.puzzles.map((puzzle) => (
-                          <Pressable
-                            key={puzzle.id}
-                            accessibilityRole="radio"
-                            accessibilityState={{
-                              selected:
-                                (puzzleChoice || daily.puzzleId) === puzzle.id,
-                            }}
-                            onPress={() => setPuzzleChoice(puzzle.id)}
-                            style={{
-                              flexDirection: "row",
-                              gap: 12,
-                              alignItems: "center",
-                              minHeight: 44,
-                            }}
-                          >
-                            <View
-                              style={[
-                                styles.radio,
-                                (puzzleChoice || daily.puzzleId) ===
-                                  puzzle.id && {
-                                  backgroundColor: colors.green,
-                                  borderColor: colors.green,
-                                },
-                              ]}
-                            >
-                              {(puzzleChoice || daily.puzzleId) ===
-                                puzzle.id && (
-                                <Text style={{ color: colors.white }}>✓</Text>
-                              )}
-                            </View>
-                            <Text
+                    )}
+                    <View style={{ gap: 13 }}>
+                      {selected === "crossword" && daily && (
+                        <Card style={{ gap: 12 }}>
+                          <Label>CHOOSE YOUR MINI</Label>
+                          {daily.puzzles.map((puzzle) => (
+                            <Pressable
+                              key={puzzle.id}
+                              accessibilityRole="radio"
+                              aria-checked={
+                                (puzzleChoice || daily.puzzleId) === puzzle.id
+                              }
+                              accessibilityState={{
+                                selected:
+                                  (puzzleChoice || daily.puzzleId) ===
+                                  puzzle.id,
+                              }}
+                              onPress={() => setPuzzleChoice(puzzle.id)}
                               style={{
-                                color: colors.ink,
-                                fontSize: 14,
-                                flex: 1,
+                                flexDirection: "row",
+                                gap: 12,
+                                alignItems: "center",
+                                minHeight: 44,
                               }}
                             >
-                              {puzzle.title}
-                              {puzzle.id === daily.puzzleId ? " · Today" : ""}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </Card>
-                    )}
-                    <Button
-                      loading={busy}
-                      disabled={
-                        table.players.length < selectedGame.min ||
-                        table.players.length > selectedGame.max
-                      }
-                      title={`Play ${selectedGame.title} →`}
-                      onPress={() => void startGame()}
-                    />
-                    <Text
-                      style={[s.body, { fontSize: 13, textAlign: "center" }]}
-                    >
-                      {table.players.length < selectedGame.min
-                        ? `Invite ${selectedGame.min - table.players.length} more player${selectedGame.min - table.players.length > 1 ? "s" : ""} to play.`
-                        : table.players.length > selectedGame.max
-                          ? `${selectedGame.title} supports up to ${selectedGame.max} players. Choose another game.`
-                          : "Everyone here? Start when you’re ready."}
-                    </Text>
-                  </View>
+                              <View
+                                style={[
+                                  styles.radio,
+                                  (puzzleChoice || daily.puzzleId) ===
+                                    puzzle.id && {
+                                    backgroundColor: colors.green,
+                                    borderColor: colors.green,
+                                  },
+                                ]}
+                              >
+                                {(puzzleChoice || daily.puzzleId) ===
+                                  puzzle.id && (
+                                  <Text style={{ color: colors.white }}>✓</Text>
+                                )}
+                              </View>
+                              <Text
+                                style={{
+                                  color: colors.ink,
+                                  fontSize: 14,
+                                  flex: 1,
+                                }}
+                              >
+                                {puzzle.title}
+                                {puzzle.id === daily.puzzleId ? " · Today" : ""}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </Card>
+                      )}
+                    </View>
+                  </>
                 ) : (
                   <Card>
                     <Text style={[s.body, { textAlign: "center" }]}>
@@ -951,7 +1100,7 @@ export default function Shell({
                 <Button
                   secondary
                   title="Read the rules"
-                  onPress={() => setRule(table.gameType ?? "crossword")}
+                  onPress={() => openRules(table.gameType ?? "crossword")}
                 />
               </Card>
             ) : (
@@ -1016,6 +1165,35 @@ export default function Shell({
           </>
         )}
       </ScrollView>
+      {!home && table?.phase === "lobby" && isHost && (
+        <SafeAreaView style={styles.lobbyActionBar} edges={["bottom"]}>
+          <View style={styles.lobbyActionContent}>
+            <Button
+              loading={busy}
+              disabled={
+                table.players.length < selectedGame.min ||
+                table.players.length > selectedGame.max
+              }
+              title={`Play ${selectedGame.title} →`}
+              onPress={() => void startGame()}
+            />
+            <Text
+              style={{
+                color: colors.muted,
+                fontSize: 12,
+                lineHeight: 17,
+                textAlign: "center",
+              }}
+            >
+              {table.players.length < selectedGame.min
+                ? `Invite ${selectedGame.min - table.players.length} more player${selectedGame.min - table.players.length > 1 ? "s" : ""} to play.`
+                : table.players.length > selectedGame.max
+                  ? `${selectedGame.title} supports up to ${selectedGame.max} players. Choose another game.`
+                  : "Everyone here? Start when you’re ready."}
+            </Text>
+          </View>
+        </SafeAreaView>
+      )}
       {!home &&
         connection.isWebSocketConnected &&
         table?.gameType === "hanabi" &&
@@ -1045,7 +1223,12 @@ export default function Shell({
             onPress={() => setRule(null)}
           />
           <SafeAreaView style={styles.modalSheet} edges={["bottom"]}>
-            <ScrollView contentContainerStyle={{ padding: 26, gap: 20 }}>
+            <ScrollView
+              automaticallyAdjustKeyboardInsets
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ padding: 26, gap: 20 }}
+            >
               <View style={styles.sheetHandle} />
               <View style={[s.row, { justifyContent: "space-between" }]}>
                 <Label>A QUICK HOW-TO</Label>
@@ -1061,83 +1244,104 @@ export default function Shell({
               <Text style={s.title}>
                 {games.find((game) => game.id === rule)?.title}
               </Text>
-              <Text style={s.body}>{rule && rules[rule].intro}</Text>
-              {rule &&
-                rules[rule].steps.map((step, index) => (
-                  <View
-                    key={step}
-                    style={[s.row, { alignItems: "flex-start" }]}
-                  >
-                    <View style={styles.stepNumber}>
-                      <Text style={{ fontWeight: "700", color: colors.green }}>
-                        {index + 1}
-                      </Text>
-                    </View>
-                    <Text style={[s.body, { flex: 1, color: colors.ink }]}>
-                      {step}
-                    </Text>
-                  </View>
-                ))}
-              {(rule === "hanabi" || rule === "property") && (
-                <Button
-                  secondary
-                  title="Learn to play"
-                  onPress={() => {
-                    if (rule === "hanabi" || rule === "property") learn(rule);
-                  }}
+              {keikiOpen && rule && table && code ? (
+                <KeikiRules
+                  secret={session.secret}
+                  code={code}
+                  gameType={rule}
+                  onBack={() => setKeikiOpen(false)}
                 />
-              )}
-              <Button
-                title="Got it. Let’s play."
-                onPress={() => setRule(null)}
-              />
-              {!home &&
-                isHost &&
-                table?.phase === "playing" &&
-                rule === table.gameType &&
-                (confirmEnd ? (
-                  <Card style={{ gap: 14, backgroundColor: "#faeee5" }}>
-                    <Text
-                      style={{
-                        fontSize: 17,
-                        fontWeight: "700",
-                        color: colors.ink,
-                      }}
-                    >
-                      End this game for everyone?
-                    </Text>
-                    <Text style={s.body}>
-                      No result will be saved. Everyone keeps their seat and the
-                      same room code.
-                    </Text>
+              ) : (
+                <>
+                  <Text style={s.body}>{rule && rules[rule].intro}</Text>
+                  {rule &&
+                    rules[rule].steps.map((step, index) => (
+                      <View
+                        key={step}
+                        style={[s.row, { alignItems: "flex-start" }]}
+                      >
+                        <View style={styles.stepNumber}>
+                          <Text
+                            style={{ fontWeight: "700", color: colors.green }}
+                          >
+                            {index + 1}
+                          </Text>
+                        </View>
+                        <Text style={[s.body, { flex: 1, color: colors.ink }]}>
+                          {step}
+                        </Text>
+                      </View>
+                    ))}
+                  {(rule === "hanabi" || rule === "property") && (
                     <Button
                       secondary
-                      title="Keep playing"
-                      onPress={() => setConfirmEnd(false)}
+                      title="Learn to play"
+                      onPress={() => {
+                        if (rule === "hanabi" || rule === "property")
+                          learn(rule);
+                      }}
                     />
-                    <Button
-                      loading={busy}
-                      title="End game for everyone"
-                      onPress={() =>
-                        void task(async () => {
-                          await lobby({
-                            secret: session.secret,
-                            code: table.code,
-                            actionId: Crypto.randomUUID(),
-                            expectedVersion: table.version,
-                          });
-                          setRule(null);
-                        })
-                      }
-                    />
-                  </Card>
-                ) : (
+                  )}
                   <Button
-                    secondary
-                    title="End game and choose another"
-                    onPress={() => setConfirmEnd(true)}
+                    title="Got it. Let’s play."
+                    onPress={() => setRule(null)}
                   />
-                ))}
+                  {table && !home && (
+                    <Button
+                      secondary
+                      title="Ask Keiki about the rules"
+                      onPress={() => setKeikiOpen(true)}
+                    />
+                  )}
+                  {!home &&
+                    isHost &&
+                    table?.phase === "playing" &&
+                    rule === table.gameType &&
+                    (confirmEnd ? (
+                      <Card style={{ gap: 14, backgroundColor: "#faeee5" }}>
+                        <Text
+                          style={{
+                            fontSize: 17,
+                            fontWeight: "700",
+                            color: colors.ink,
+                          }}
+                        >
+                          End this game for everyone?
+                        </Text>
+                        <Text style={s.body}>
+                          No result will be saved. Everyone keeps their seat and
+                          the same room code.
+                        </Text>
+                        <Button
+                          secondary
+                          title="Keep playing"
+                          onPress={() => setConfirmEnd(false)}
+                        />
+                        <Button
+                          loading={busy}
+                          title="End game for everyone"
+                          onPress={() =>
+                            void task(async () => {
+                              await lobby({
+                                secret: session.secret,
+                                code: table.code,
+                                actionId: Crypto.randomUUID(),
+                                expectedVersion: table.version,
+                              });
+                              setRule(null);
+                            })
+                          }
+                        />
+                      </Card>
+                    ) : (
+                      <Button
+                        secondary
+                        title="End game and choose another"
+                        onPress={() => setConfirmEnd(true)}
+                      />
+                    ))}
+                </>
+              )}
             </ScrollView>
           </SafeAreaView>
         </View>
@@ -1151,6 +1355,35 @@ export default function Shell({
   );
 }
 const styles = StyleSheet.create({
+  compactHeader: { paddingHorizontal: 16, paddingVertical: 10 },
+  compactScroll: { padding: 16, gap: 14, paddingBottom: 28 },
+  playingScroll: { padding: 12, gap: 10 },
+  playingTitle: { fontSize: 24, lineHeight: 30 },
+  compactPlayer: { padding: 3, paddingRight: 8, gap: 5 },
+  compactHero: { minHeight: 0, padding: 20, borderRadius: 23 },
+  compactHeroTitle: { fontSize: 35, lineHeight: 38, marginTop: 14 },
+  compactHeroBody: { maxWidth: "100%", marginTop: 10, lineHeight: 20 },
+  compactEntryCard: { minHeight: 0, padding: 14, borderRadius: 18 },
+  compactEntryIcon: { marginBottom: 6, fontSize: 22 },
+  compactEntryArrow: { marginTop: 10 },
+  homeRules: {
+    minHeight: 44,
+    justifyContent: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 4,
+  },
+  lobbyActionBar: {
+    backgroundColor: colors.paper,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  lobbyActionContent: {
+    width: "100%",
+    maxWidth: 620,
+    alignSelf: "center",
+    padding: 12,
+    gap: 7,
+  },
   header: {
     paddingHorizontal: 24,
     paddingVertical: 19,
